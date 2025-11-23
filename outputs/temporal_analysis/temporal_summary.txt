@@ -1,0 +1,18 @@
+
+==================== TEMPORAL CRIME SUMMARY ====================
+
+⭐ Peak Crime Hour: 0:00  
+   → Total incidents: 33741
+
+⭐ Peak Crime Month: 7  
+   → Total incidents: 46553
+
+⭐ Insights:
+- High-risk time periods identified
+- Seasonal crime variations detected
+- Temporal clusters created for crime pattern profiling
+- Heatmap reveals day–hour behavior patterns
+
+All visuals saved in:
+outputs/temporal_analysis/
+==============================================================

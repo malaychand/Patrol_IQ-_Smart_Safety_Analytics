@@ -1,0 +1,12 @@
+
+================ TEMPORAL CLUSTERING SUMMARY ================
+Clusters Used: 4
+Silhouette Score: 0.2714
+Davies-Bouldin Score: 1.1248
+
+Insights:
+• Identified 4 time-based crime patterns.
+• Shows peak crime hours (late-night, evening, rush-hour).
+• Shows weekday & weekend behaviour difference.
+• Shows seasonal (month-wise) crime variations.
+===============================================================
