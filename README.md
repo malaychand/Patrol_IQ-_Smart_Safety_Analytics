@@ -7,14 +7,16 @@ The platform identifies **crime hotspots**, analyzes **temporal crime patterns**
 Built using **Python, Streamlit, and modern data science workflows**, PatrolIQ demonstrates how machine learning can support safer cities through data-driven decision-making.
 
 ---
-
 ## 🔗 Project Links
 
-- **DagsHub Repository:**  
+- 🚀 **Live Streamlit App**  
+  https://malaychand-patrol-iq--smart-safety-analytics-app-ttokzc.streamlit.app/
+
+- 📦 **DagsHub Repository**  
   https://dagshub.com/malaychand/Patrol_IQ-_Smart_Safety_Analytics
 
-- **MLflow Experiment Dashboard:**  
-  https://dagshub.com/malaychand/Patrol_IQ-_Smart_Safety_Analytics.mlflow/#/experiments
+- 📊 **MLflow Experiment Dashboard**  
+  https://dagshub.com/malaychand/Patrol_IQ-_Smart_Safety_Analytics.mlflow/#/experiments/0/runs
 
 ---
 
