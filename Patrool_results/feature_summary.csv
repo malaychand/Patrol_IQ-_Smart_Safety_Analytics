@@ -1,0 +1,9 @@
+Feature,Non_Null_Count,Data_Type
+Lat_norm,597668,float64
+Lon_norm,597668,float64
+Lat_bin,597668,float64
+Lon_bin,597668,float64
+GeoCluster,597668,float64
+Severity,600000,float64
+CrimeType_Encoded,600000,int64
+Location_Encoded,600000,int64

@@ -1,0 +1,15 @@
+PATROLIQ - EDA SUMMARY
+================================================================================
+
+Total Records: 600000
+Total Columns: 36
+Date Range: 2023-07-12 14:00:00 to 2025-11-23 00:00:00
+Crime Types: 31
+Districts: 23
+Arrest Rate: 14.15%
+Domestic Rate: 18.40%
+Peak Hour: 0:00
+Peak Day: Friday
+Peak Month: 8
+Most Common Crime: THEFT
+Top District: District 8.0

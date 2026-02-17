@@ -1,0 +1,60 @@
+{
+    "Geographic Clustering": {
+        "Best Algorithm": "DBSCAN",
+        "KMeans": {
+            "n_clusters": 2,
+            "silhouette_score": 0.44955054599584277,
+            "davies_bouldin_score": 0.8297415836890931,
+            "model_path": "/content/drive/MyDrive/Malay_folder/guvi/Patrool_results/kmeans_geo_model.pkl"
+        },
+        "DBSCAN": {
+            "eps": 0.2,
+            "n_clusters": 2,
+            "silhouette_score": 0.553085144238765,
+            "model_path": "/content/drive/MyDrive/Malay_folder/guvi/Patrool_results/dbscan_geo_model.pkl"
+        },
+        "Hierarchical": {
+            "n_clusters": 3,
+            "silhouette_score": 0.3880318479588144,
+            "davies_bouldin_score": 0.9765324243868566,
+            "model_path": "/content/drive/MyDrive/Malay_folder/guvi/Patrool_results/hierarchical_geo_model.pkl"
+        }
+    },
+    "Temporal Clustering": {
+        "Algorithm": "KMeans",
+        "n_clusters": 7,
+        "silhouette_score": 0.2929923412301631,
+        "davies_bouldin_score": 1.0738794959930196,
+        "model_path": "/content/drive/MyDrive/Malay_folder/guvi/Patrool_results/kmeans_temporal_model.pkl"
+    },
+    "Dimensionality Reduction": {
+        "PCA": {
+            "n_components": 3,
+            "variance_explained": 0.5334574567021815,
+            "components_for_70pct": 5,
+            "components_for_80pct": 6,
+            "model_path": "/content/drive/MyDrive/Malay_folder/guvi/Patrool_results/pca_model.pkl"
+        },
+        "t-SNE": {
+            "n_components": 2,
+            "perplexity": 30,
+            "model_path": "/content/drive/MyDrive/Malay_folder/guvi/Patrool_results/tsne_model.pkl"
+        }
+    },
+    "Feature_Engineering": {
+        "total_features": 11,
+        "features_used": [
+            "Hour",
+            "Day",
+            "Month",
+            "Year",
+            "Lat_norm",
+            "Lon_norm",
+            "Lat_bin",
+            "Lon_bin",
+            "DayOfWeek_encoded",
+            "Season_encoded",
+            "Arrest_flag"
+        ]
+    }
+}

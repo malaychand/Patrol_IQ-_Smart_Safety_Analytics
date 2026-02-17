@@ -5,10 +5,10 @@ matplotlib
 seaborn
 plotly
 streamlit
-mlflow
-umap-learn
 scipy
 joblib
 python-dateutil
 geopy
 tqdm
+umap-learn
+mlflow

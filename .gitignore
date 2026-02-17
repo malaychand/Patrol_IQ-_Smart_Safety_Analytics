@@ -11,7 +11,6 @@ __pycache__/
 
 # ====== Data ======
 
-models/
 mlruns/
 
 # ====== Virtual environment ======
@@ -32,3 +31,4 @@ logs/
 *.swp
 
 results
+data/raw/

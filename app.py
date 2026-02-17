@@ -1,277 +1,715 @@
+"""
+PatrolIQ - Smart Safety Analytics Platform
+Simple Streamlit Application
+"""
+
 import streamlit as st
 import pandas as pd
-import numpy as np
+import os
 import plotly.express as px
-from sklearn.decomposition import PCA
-import mlflow
-import mlflow.sklearn
+import plotly.graph_objects as go
+import json
 
-# ==========================================================
-# Paths
-# ==========================================================
-DATA_PATH = r"\data\processed\feature_engineered_crimes.csv"
-MLFLOW_URI = "mlruns"
-MODEL_NAME = "Crime_Clustering_Model"
+# ==============================
+# Configuration
+# ==============================
+st.set_page_config(
+    page_title="PatrolIQ - Smart Safety Analytics",
+    page_icon="🚨",
+    layout="wide"
+)
 
-# ==========================================================
-# Load Data
-# ==========================================================
-@st.cache_data
-def load_data():
-    df = pd.read_csv(DATA_PATH, low_memory=False)
-    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-    return df
+RESULTS_PATH = "Patrool_results/"
 
-df = load_data()
+# ==============================
+# Helper Functions
+# ==============================
+def load_csv(filename):
+    """Load CSV file from results directory"""
+    path = os.path.join(RESULTS_PATH, filename)
+    if os.path.exists(path):
+        try:
+            return pd.read_csv(path)
+        except Exception as e:
+            st.error(f"Error loading {filename}: {e}")
+            return None
+    return None
 
-# ==========================================================
-# Map numeric crime codes to names
-# ==========================================================
-crime_type_mapping = {
-    1: "THEFT",
-    2: "BATTERY",
-    3: "ASSAULT",
-    4: "ROBBERY",
-    5: "BURGLARY",
-    6: "NARCOTICS",
-    7: "CRIMINAL DAMAGE",
-    8: "OTHER OFFENSE",
-    9: "MOTOR VEHICLE THEFT",
-    10: "DECEPTIVE PRACTICE",
-    # Extend with all PrimaryType_Code values
-}
-if 'PrimaryType_Code' in df.columns:
-    df['PrimaryType_Label'] = df['PrimaryType_Code'].map(crime_type_mapping)
+def load_json(filename):
+    """Load JSON file from results directory"""
+    path = os.path.join(RESULTS_PATH, filename)
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            st.error(f"Error loading {filename}: {e}")
+            return None
+    return None
 
-# ==========================================================
-# Cluster labels mapping
-# ==========================================================
-cluster_mapping = {
-    '0': "Cluster A – Residential Area Crimes",
-    '1': "Cluster B – Commercial Area Crimes",
-    '2': "Cluster C – Nightlife / Entertainment Crimes",
-    '3': "Cluster D – Industrial / Warehouse Crimes",
-    '4': "Cluster E – Mixed Low-Density Crimes"
-}
-
-# ==========================================================
-# Load MLflow model
-# ==========================================================
-@st.cache_resource
-def load_model():
-    mlflow.set_tracking_uri(MLFLOW_URI)
-    model = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}/1")
-    return model
-
-best_model = load_model()
-
-# ==========================================================
-# Streamlit Layout
-# ==========================================================
-st.set_page_config(page_title="PatrolIQ - Crime Dashboard", layout="wide")
-st.title("🚨 PatrolIQ - Smart Safety Analytics Dashboard")
-st.markdown("""
-**Mission:** Analyze crime patterns to answer:
-- Where should we patrol tonight?
-- Which neighborhoods need more resources?
-- When do most crimes occur?
-""")
-
-page = st.sidebar.selectbox("Select Page", 
-                            ["Overview", "Geographic Hotspots", "Temporal Patterns", 
-                             "Cluster Visualization", "Model Monitoring"])
-
-# ==========================================================
-# Page 1: Overview
-# ==========================================================
-if page == "Overview":
-    st.header("📊 Dataset Overview")
-    
-    # Sample Records
-    st.subheader("Sample Records")
-    st.dataframe(df.head(10))
-
-    # Column Information
-    st.subheader("Columns Info")
-    col_info = pd.DataFrame({
-        "Column": df.columns,
-        "Non-Null Count": df.notnull().sum().values,
-        "Data Type": df.dtypes.values
-    })
-    st.dataframe(col_info, height=300)
-
-    # Crime Type Distribution
-    st.subheader("Crime Type Distribution")
-    crime_counts = df['PrimaryType_Label'].value_counts().reset_index()
-    crime_counts.columns = ['Crime Type', 'Count']
-
-    fig = px.bar(crime_counts, x='Crime Type', y='Count', title="Crime Type Counts", text='Count',
-                 color='Crime Type', color_discrete_sequence=px.colors.qualitative.Bold)
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown("**Description:** Number of crimes by type. Shows which crimes are most common in the city.")
-
-# ==========================================================
-# Page 2: Geographic Hotspots
-# ==========================================================
-elif page == "Geographic Hotspots":
-    st.header("🗺 Geographic Crime Hotspots")
-
-    # Slider for sample size
-    map_sample_size = st.sidebar.slider("Number of points to display on map", 1000, 50000, 5000, step=1000)
-
-    # Cluster Map with colors
-    features = ['Latitude_norm', 'Longitude_norm', 'CrimeSeverity', 'PrimaryType_Code']
-    X_features = df[features].dropna().copy()
-    X_features = pd.get_dummies(X_features, columns=['PrimaryType_Code'])
-
-    # PCA 2D
-    pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(X_features)
-
-    # Predict clusters
-    labels = best_model.predict(X_pca) if hasattr(best_model, 'predict') else best_model.fit_predict(X_pca)
-    df_geo = df.loc[df[['Latitude_norm', 'Longitude_norm']].dropna().index].copy()
-    df_geo['Cluster'] = labels.astype(str)
-    df_geo['Cluster_Label'] = df_geo['Cluster'].map(cluster_mapping)
-    df_geo_sample = df_geo.sample(n=min(map_sample_size, len(df_geo)), random_state=42)
-
-    fig = px.scatter_mapbox(df_geo_sample, lat='Latitude_norm', lon='Longitude_norm', color='Cluster_Label',
-                            hover_name='PrimaryType_Label', hover_data=['CrimeSeverity'], zoom=10, height=600,
-                            color_discrete_sequence=px.colors.qualitative.Set1)
-    fig.update_layout(mapbox_style="open-street-map")
-    fig.update_traces(marker=dict(size=8, opacity=0.7))
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown("**Description:** Each color represents a cluster of similar crimes. Hover to see crime type and severity.")
-    
-    # Hotspot Recommendations
-    st.subheader("🔹 Hotspot Recommendations")
-    recent_crimes = df.dropna(subset=['Date'])
-    recent_crimes = recent_crimes[recent_crimes['Date'] >= (recent_crimes['Date'].max() - pd.Timedelta(days=7))]
-    top_blocks = recent_crimes['Block'].value_counts().head(5)
-    st.markdown("**Where should we patrol tonight?**")
-    st.table(top_blocks.reset_index().rename(columns={'index':'Block','Block':'Crime Count'}))
-
-    top_districts = df['District'].value_counts().head(5)
-    st.markdown("**Which neighborhoods need more resources?**")
-    st.table(top_districts.reset_index().rename(columns={'index':'District','District':'Crime Count'}))
-
-    peak_hour = df['Hour'].value_counts().idxmax()
-    peak_day = df['DayOfWeek'].value_counts().idxmax()
-    peak_month = df['Month'].value_counts().idxmax()
-    st.markdown("**When do most crimes occur?**")
-    st.markdown(f"- **Peak Hour:** {peak_hour}:00")
-    st.markdown(f"- **Peak Day:** {peak_day}")
-    st.markdown(f"- **Peak Month:** {peak_month}")
-
-# ==========================================================
-# Page 3: Temporal Patterns
-# ==========================================================
-elif page == "Temporal Patterns":
-    st.header("⏰ Temporal Crime Patterns")
-
-    df_time = df.dropna(subset=['Date'])
-    df_time['YearMonth'] = df_time['Date'].dt.to_period('M')
-    
-    # Crime count over months/years
-    crime_by_month = df_time.groupby('YearMonth').size().reset_index(name='CrimeCount')
-    crime_by_month['YearMonth'] = crime_by_month['YearMonth'].astype(str)
-    fig = px.line(crime_by_month, x='YearMonth', y='CrimeCount', title="Crime Count Over Time",
-                  markers=True, line_shape='linear', color_discrete_sequence=['crimson'])
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown("**Description:** Shows monthly crime trends.")
-
-    # Hourly distribution
-    st.subheader("Crimes by Hour")
-    fig = px.histogram(df_time, x='Hour', nbins=24, title="Hourly Crime Distribution",
-                       color_discrete_sequence=['darkorange'])
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown("**Description:** Highlights peak hours for crimes.")
-
-    # Day of Week
-    st.subheader("Crimes by Day of Week")
-    day_order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-    day_counts = df['DayOfWeek'].value_counts().reindex(day_order)
-    fig = px.bar(x=day_counts.index, y=day_counts.values, labels={'x':'Day','y':'Crime Count'},
-                 title="Crimes by Day of Week", color_discrete_sequence=px.colors.qualitative.Pastel)
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown("**Description:** Shows weekly crime patterns.")
-
-    # Month / Season / Weekend
-    st.subheader("Crimes by Month")
-    month_counts = df['Month'].value_counts().sort_index()
-    fig = px.bar(x=month_counts.index, y=month_counts.values, labels={'x':'Month','y':'Crime Count'},
-                 title="Crimes by Month", color_discrete_sequence=px.colors.qualitative.Vivid)
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Crimes by Season")
-    if 'Season' in df.columns:
-        season_counts = df['Season'].value_counts()
-        fig = px.bar(x=season_counts.index, y=season_counts.values, labels={'x':'Season','y':'Crime Count'},
-                     title="Crimes by Season", color_discrete_sequence=px.colors.qualitative.Set3)
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Crimes on Weekend vs Weekday")
-    if 'Weekend' in df.columns:
-        weekend_counts = df['Weekend'].value_counts()
-        fig = px.bar(x=weekend_counts.index, y=weekend_counts.values, labels={'x':'Weekend','y':'Crime Count'},
-                     title="Weekend vs Weekday Crimes", color_discrete_sequence=px.colors.qualitative.Pastel)
-        st.plotly_chart(fig, use_container_width=True)
-
-# ==========================================================
-# Page 4: Cluster Visualization
-# ==========================================================
-elif page == "Cluster Visualization":
-    st.header("🧮 PCA 2D Cluster Visualization")
-
-    features = ['Latitude_norm', 'Longitude_norm', 'CrimeSeverity', 'PrimaryType_Code']
-    X_full = df[features].dropna().copy()
-    X_full = pd.get_dummies(X_full, columns=['PrimaryType_Code'])
-    pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(X_full)
-
-    labels = best_model.predict(X_pca) if hasattr(best_model, 'predict') else best_model.fit_predict(X_pca)
-    df_pca = pd.DataFrame({
-        'PC1': X_pca[:,0],
-        'PC2': X_pca[:,1],
-        'Cluster': labels.astype(str)
-    })
-    df_pca['Cluster_Label'] = df_pca['Cluster'].map(cluster_mapping)
-
-    fig = px.scatter(df_pca, x='PC1', y='PC2', color='Cluster_Label',
-                     title="PCA 2D Cluster Plot",
-                     hover_data=['Cluster_Label'], color_discrete_sequence=px.colors.qualitative.Set2)
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown("**Description:** Visual representation of crimes in 2D PCA space. Each color is a cluster with a meaningful label.")
-
-# ==========================================================
-# Page 5: Model Monitoring
-# ==========================================================
-elif page == "Model Monitoring":
-    st.header("📈 MLflow Model Monitoring")
-
-    mlflow.set_tracking_uri(MLFLOW_URI)
-    client = mlflow.tracking.MlflowClient()
-    experiment = client.get_experiment_by_name("Crime_Clustering")
-
-    if experiment:
-        st.write("Experiment Name:", experiment.name)
-        st.write("Experiment ID:", experiment.experiment_id)
-        runs = client.search_runs(experiment.experiment_id, order_by=["metrics.silhouette_score DESC"])
-        if runs:
-            run = runs[0]
-            metrics = pd.DataFrame(list(run.data.metrics.items()), columns=['Metric', 'Value'])
-            params = pd.DataFrame(list(run.data.params.items()), columns=['Parameter', 'Value'])
-
-            st.subheader("Best Run Details")
-            st.markdown(f"**Run ID:** {run.info.run_id}")
-            st.markdown(f"**Silhouette Score:** {run.data.metrics['silhouette_score']}")
-
-            st.subheader("Logged Parameters")
-            st.dataframe(params, use_container_width=True)
-
-            st.subheader("Logged Metrics")
-            st.dataframe(metrics, use_container_width=True)
-        else:
-            st.write("No runs found.")
+def show_image(filename, caption=None):
+    """Display image from results directory"""
+    path = os.path.join(RESULTS_PATH, filename)
+    if os.path.exists(path):
+        st.image(path, caption=caption, use_container_width=True)
     else:
-        st.write("Experiment not found.")
+        st.warning(f"Image not found: {filename}")
+
+# ==============================
+# Sidebar
+# ==============================
+st.sidebar.title("🚨 PatrolIQ")
+st.sidebar.markdown("### Navigation")
+
+page = st.sidebar.radio(
+    "Select Page",
+    [
+        "🏠 Home",
+        "📊 EDA Results", 
+        "🗺️ Geographic Hotspots",
+        "⏰ Temporal Patterns",
+        "🔬 Dimensionality Reduction",
+        "📈 Model Performance",
+        "🧪 MLflow Tracking"
+    ]
+)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📁 System Status")
+
+# Check results folder
+if os.path.exists(RESULTS_PATH):
+    files = os.listdir(RESULTS_PATH)
+    st.sidebar.success(f"✓ Results folder found")
+    st.sidebar.info(f"📄 {len(files)} files available")
+else:
+    st.sidebar.error("✗ Results folder not found")
+
+# ==============================
+# Page 1: Home
+# ==============================
+if page == "🏠 Home":
+    
+    st.title("🚨 PatrolIQ - Smart Safety Analytics Platform")
+
+    st.markdown("""
+    ## 🎯 Mission
+    Build a comprehensive urban safety intelligence platform that leverages unsupervised machine learning 
+    to analyze crime patterns and optimize police resource allocation.
+
+    Imagine working as a **crime intelligence analyst** helping law enforcement answer critical questions using data.
+    """)
+
+    st.markdown("""
+    ### Critical Questions Answered
+    - 📍 **Where should we patrol tonight?**
+    - 🏘️ **Which neighborhoods need more resources?**
+    - ⏰ **When do most crimes occur?**
+    """)
+
+    st.markdown("---")
+
+    # Business Use Cases
+    st.subheader("🏙️ Business Use Cases")
+
+    use_col1, use_col2 = st.columns(2)
+
+    with use_col1:
+        st.markdown("**Police Departments**")
+        st.markdown("""
+        - Optimize patrol routes
+        - Identify high-risk areas
+        - Predict crime patterns
+        - Improve response time
+        """)
+
+        st.markdown("**City Administration**")
+        st.markdown("""
+        - Data-driven urban planning
+        - Strategic surveillance placement
+        - Budget allocation insights
+        - District crime monitoring
+        """)
+
+    with use_col2:
+        st.markdown("**Analytics Firms**")
+        st.markdown("""
+        - Multi-city crime intelligence
+        - Predictive policing solutions
+        - Safety benchmarking
+        - Stakeholder reports
+        """)
+
+        st.markdown("**Emergency Response**")
+        st.markdown("""
+        - Risk-based call prioritization
+        - Optimized ambulance deployment
+        - Multi-agency coordination
+        - Real-time situational awareness
+        """)
+
+    st.markdown("---")
+    
+    # Project Overview
+    st.subheader("📌 Project Overview")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Project Title**")
+        st.info("PatrolIQ - Smart Safety Analytics Platform")
+        
+        st.markdown("**Domain**")
+        st.info("Public Safety and Urban Analytics")
+
+    with col2:
+        st.markdown("**Skills Applied**")
+        st.markdown("""
+        - Python
+        - Machine Learning
+        - Unsupervised Learning
+        - Clustering Algorithms
+        - Dimensionality Reduction
+        - Geographic Data Analysis
+        - Data Visualization
+        - MLflow
+        - Streamlit Cloud Deployment
+        """)
+
+    st.markdown("---")
+
+    # Key Statistics
+    st.subheader("📊 Project Statistics")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Dataset Size", "500,000", "Crime Records")
+    col2.metric("Features", "22+", "Engineered")
+    col3.metric("Crime Types", "33", "Categories")
+    col4.metric("ML Models", "5+", "Algorithms")
+
+    st.markdown("---")
+
+    # Technical Approach
+    st.subheader("🔬 Technical Approach")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("**🗺️ Geographic Clustering**")
+        st.markdown("- K-Means")
+        st.markdown("- DBSCAN")
+        st.markdown("- Hierarchical Clustering")
+        st.info("Goal: Identify crime hotspots")
+
+    with col2:
+        st.markdown("**⏰ Temporal Pattern Analysis**")
+        st.markdown("- Hourly crime trends")
+        st.markdown("- Weekly patterns")
+        st.markdown("- Seasonal cycles")
+        st.info("Goal: Optimize patrol timing")
+
+    with col3:
+        st.markdown("**🔬 Dimensionality Reduction**")
+        st.markdown("- PCA (70%+ variance)")
+        st.markdown("- t-SNE / UMAP")
+        st.markdown("- Feature importance ranking")
+        st.info("Goal: Visualize complex crime patterns")
+
+    st.markdown("---")
+
+
+    # Technologies
+    st.subheader("🛠️ Technologies Used")
+
+    tech_col1, tech_col2, tech_col3 = st.columns(3)
+
+    with tech_col1:
+        st.markdown("**Machine Learning**")
+        st.markdown("- Scikit-learn")
+        st.markdown("- NumPy / Pandas")
+
+    with tech_col2:
+        st.markdown("**Visualization**")
+        st.markdown("- Plotly")
+        st.markdown("- Matplotlib / Seaborn")
+
+    with tech_col3:
+        st.markdown("**Deployment & Tracking**")
+        st.markdown("- Streamlit Cloud")
+        st.markdown("- MLflow")
+        st.markdown("- DagsHub")
+
+# ==============================
+# Page 2: EDA Results
+# ==============================
+elif page == "📊 EDA Results":
+    
+    st.title("📊 Exploratory Data Analysis Results")
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Missing Values", 
+        "Crime Types", 
+        "Arrest Analysis",
+        "Temporal Patterns",
+        "Geographic Analysis"
+    ])
+    
+    with tab1:
+        st.subheader("Missing Values Analysis")
+        missing_df = load_csv("missing_values_summary.csv")
+        if missing_df is not None:
+            st.dataframe(missing_df, use_container_width=True)
+    
+    with tab2:
+        st.subheader("Crime Type Distribution")
+        show_image("02_crime_type_analysis.png")
+        
+        crime_counts = load_csv("crime_type_counts.csv")
+        if crime_counts is not None:
+            st.dataframe(crime_counts.head(20), use_container_width=True)
+    
+    with tab3:
+        st.subheader("Arrest & Domestic Incidents")
+        show_image("03_arrest_domestic_analysis.png")
+        
+        arrest_rates = load_csv("arrest_rates_by_crime.csv")
+        if arrest_rates is not None:
+            st.dataframe(arrest_rates.head(20), use_container_width=True)
+    
+    with tab4:
+        st.subheader("Temporal Crime Patterns")
+        show_image("04_temporal_patterns.png")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            hourly = load_csv("temporal_hourly.csv")
+            if hourly is not None:
+                st.markdown("**Hourly Distribution**")
+                st.dataframe(hourly, use_container_width=True)
+        
+        with col2:
+            daily = load_csv("temporal_daily.csv")
+            if daily is not None:
+                st.markdown("**Daily Distribution**")
+                st.dataframe(daily, use_container_width=True)
+    
+    with tab5:
+        st.subheader("Geographic Distribution")
+        show_image("05_geographic_analysis.png")
+        
+        districts = load_csv("district_counts.csv")
+        if districts is not None:
+            st.dataframe(districts.head(20), use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Additional EDA
+    st.subheader("Additional Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Correlation Analysis**")
+        show_image("06_correlation_analysis.png")
+    
+    with col2:
+        st.markdown("**Crime Descriptions**")
+        show_image("07_descriptions_analysis.png")
+    
+    st.markdown("---")
+    st.markdown("**Feature Engineering**")
+    show_image("08_feature_engineering.png")
+
+# ==============================
+# Page 3: Geographic Hotspots
+# ==============================
+elif page == "🗺️ Geographic Hotspots":
+    
+    st.title("🗺️ Geographic Crime Hotspots")
+    
+    # Algorithm Comparison
+    st.subheader("⚖️ Algorithm Performance Comparison")
+    
+    comparison_df = load_csv("geo_clustering_comparison.csv")
+    
+    if comparison_df is not None:
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            fig = px.bar(
+                comparison_df,
+                x='Algorithm',
+                y='Silhouette Score',
+                title="Silhouette Score",
+                text='Silhouette Score',
+                color='Algorithm'
+            )
+            fig.update_traces(texttemplate='%{text:.4f}', textposition='outside')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            fig = px.bar(
+                comparison_df,
+                x='Algorithm',
+                y='Davies-Bouldin Score',
+                title="Davies-Bouldin Score",
+                text='Davies-Bouldin Score',
+                color='Algorithm'
+            )
+            fig.update_traces(texttemplate='%{text:.4f}', textposition='outside')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col3:
+            st.dataframe(comparison_df, use_container_width=True, height=300)
+        
+        # Best algorithm
+        best_algo = comparison_df.loc[comparison_df['Silhouette Score'].idxmax(), 'Algorithm']
+        st.success(f"🏆 **Best Algorithm**: {best_algo}")
+    
+    st.markdown("---")
+    
+    # Visualizations
+    st.subheader("📍 Cluster Visualizations")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["KMeans", "DBSCAN", "Hierarchical", "Comparison"])
+    
+    with tab1:
+        st.markdown("### KMeans Clustering (K=6)")
+        show_image("geo_kmeans_clusters.png")
+        st.markdown("**Elbow Analysis**")
+        show_image("geo_kmeans_elbow_analysis.png")
+    
+    with tab2:
+        st.markdown("### DBSCAN Clustering")
+        show_image("geo_dbscan_clusters.png")
+    
+    with tab3:
+        st.markdown("### Hierarchical Clustering")
+        col1, col2 = st.columns(2)
+        with col1:
+            show_image("geo_hierarchical_clusters.png")
+        with col2:
+            show_image("geo_hierarchical_dendrogram.png")
+    
+    with tab4:
+        st.markdown("### Performance Comparison")
+        show_image("geo_clustering_comparison.png")
+
+# ==============================
+# Page 4: Temporal Patterns
+# ==============================
+elif page == "⏰ Temporal Patterns":
+    
+    st.title("⏰ Temporal Crime Patterns")
+    
+    st.info("Temporal analysis identifies when crimes occur to optimize patrol schedules.")
+    
+    # Main visualization
+    st.subheader("📈 Crime Patterns by Time")
+    show_image("temporal_crime_patterns.png")
+    
+    st.markdown("---")
+    
+    # Elbow analysis
+    st.subheader("🔍 Optimal Cluster Selection")
+    show_image("temporal_kmeans_elbow.png")
+    
+    st.markdown("---")
+    
+    # Statistics
+    st.subheader("📊 Temporal Statistics")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    hourly = load_csv("temporal_hourly.csv")
+    daily = load_csv("temporal_daily.csv")
+    monthly = load_csv("temporal_monthly.csv")
+    seasonal = load_csv("temporal_seasonal.csv")
+    
+    if hourly is not None:
+        peak_hour = hourly.loc[hourly['Crime_Count'].idxmax(), 'Hour']
+        col1.metric("Peak Hour", f"{int(peak_hour)}:00")
+    
+    if daily is not None:
+        peak_day = daily.loc[daily['Crime_Count'].idxmax(), 'Day']
+        col2.metric("Peak Day", peak_day)
+    
+    if monthly is not None:
+        peak_month = monthly.loc[monthly['Crime_Count'].idxmax(), 'Month']
+        col3.metric("Peak Month", int(peak_month))
+    
+    if seasonal is not None:
+        peak_season = seasonal.loc[seasonal['Crime_Count'].idxmax(), 'Season']
+        col4.metric("Peak Season", peak_season)
+    
+    # Data tables
+    st.markdown("---")
+    st.subheader("📋 Detailed Breakdown")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["Hourly", "Daily", "Monthly", "Seasonal"])
+    
+    with tab1:
+        if hourly is not None:
+            st.dataframe(hourly, use_container_width=True)
+    
+    with tab2:
+        if daily is not None:
+            st.dataframe(daily, use_container_width=True)
+    
+    with tab3:
+        if monthly is not None:
+            st.dataframe(monthly, use_container_width=True)
+    
+    with tab4:
+        if seasonal is not None:
+            st.dataframe(seasonal, use_container_width=True)
+
+# ==============================
+# Page 5: Dimensionality Reduction
+# ==============================
+elif page == "🔬 Dimensionality Reduction":
+    
+    st.title("🔬 Dimensionality Reduction Analysis")
+    
+    st.info("Reduce 22+ features to 2-3 dimensions while preserving patterns.")
+    
+    # PCA Analysis
+    st.subheader("📊 PCA - Principal Component Analysis")
+    
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Variance Explained", 
+        "Feature Importance", 
+        "2D Projection", 
+        "3D Projection"
+    ])
+    
+    with tab1:
+        show_image("pca_variance_explained.png")
+        
+        summary = load_json("model_summary.json")
+        if summary and "Dimensionality Reduction" in summary:
+            pca_info = summary["Dimensionality Reduction"].get("PCA", {})
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Variance (3 comp)", f"{pca_info.get('variance_explained', 0):.2%}")
+            col2.metric("70% Variance", f"{pca_info.get('components_for_70pct', 'N/A')} comp")
+            col3.metric("80% Variance", f"{pca_info.get('components_for_80pct', 'N/A')} comp")
+    
+    with tab2:
+        show_image("pca_feature_importance.png")
+        
+        loadings = load_csv("pca_feature_loadings.csv")
+        if loadings is not None:
+            st.dataframe(loadings, use_container_width=True)
+    
+    with tab3:
+        show_image("pca_2d_projection.png")
+    
+    with tab4:
+        show_image("pca_3d_projection.png")
+    
+    st.markdown("---")
+    
+    # t-SNE Analysis
+    st.subheader("🎨 t-SNE Visualization")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**t-SNE (Perplexity=30)**")
+        show_image("tsne_perplexity_30.png")
+    
+    with col2:
+        st.markdown("**t-SNE (Perplexity=50)**")
+        show_image("tsne_perplexity_50.png")
+
+# ==============================
+# Page 6: Model Performance
+# ==============================
+elif page == "📈 Model Performance":
+    
+    st.title("📈 Model Performance & Metrics")
+    
+    summary = load_json("model_summary.json")
+    
+    if summary:
+        
+        # Geographic Clustering
+        st.subheader("🗺️ Geographic Clustering Performance")
+        
+        if "Geographic Clustering" in summary:
+            geo = summary["Geographic Clustering"]
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("**KMeans**")
+                st.metric("Clusters", geo["KMeans"].get("n_clusters", "N/A"))
+                st.metric("Silhouette", f"{geo['KMeans'].get('silhouette_score', 0):.4f}")
+                st.metric("Davies-Bouldin", f"{geo['KMeans'].get('davies_bouldin_score', 0):.4f}")
+            
+            with col2:
+                st.markdown("**DBSCAN**")
+                st.metric("Clusters", geo["DBSCAN"].get("n_clusters", "N/A"))
+                sil = geo["DBSCAN"].get("silhouette_score")
+                st.metric("Silhouette", f"{sil:.4f}" if sil else "N/A")
+                st.metric("Epsilon", f"{geo['DBSCAN'].get('eps', 0):.2f}")
+            
+            with col3:
+                st.markdown("**Hierarchical**")
+                st.metric("Clusters", geo["Hierarchical"].get("n_clusters", "N/A"))
+                st.metric("Silhouette", f"{geo['Hierarchical'].get('silhouette_score', 0):.4f}")
+                st.metric("Davies-Bouldin", f"{geo['Hierarchical'].get('davies_bouldin_score', 0):.4f}")
+            
+            best_algo = geo.get("Best Algorithm", "N/A")
+            st.success(f"🏆 **Best Algorithm**: {best_algo}")
+        
+        st.markdown("---")
+        
+        # Temporal Clustering
+        st.subheader("⏰ Temporal Clustering Performance")
+        
+        if "Temporal Clustering" in summary:
+            temp = summary["Temporal Clustering"]
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            col1.metric("Algorithm", temp.get("Algorithm", "N/A"))
+            col2.metric("Clusters", temp.get("n_clusters", "N/A"))
+            col3.metric("Silhouette", f"{temp.get('silhouette_score', 0):.4f}")
+            col4.metric("Davies-Bouldin", f"{temp.get('davies_bouldin_score', 0):.4f}")
+        
+        st.markdown("---")
+        
+        # Dimensionality Reduction
+        st.subheader("🔬 Dimensionality Reduction Performance")
+        
+        if "Dimensionality Reduction" in summary:
+            dr = summary["Dimensionality Reduction"]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**PCA**")
+                pca = dr.get("PCA", {})
+                st.metric("Components", pca.get("n_components", "N/A"))
+                st.metric("Variance Explained", f"{pca.get('variance_explained', 0):.2%}")
+                st.metric("Components for 70%", pca.get("components_for_70pct", "N/A"))
+            
+            with col2:
+                st.markdown("**t-SNE**")
+                tsne = dr.get("t-SNE", {})
+                st.metric("Components", tsne.get("n_components", "N/A"))
+                st.metric("Perplexity", tsne.get("perplexity", "N/A"))
+        
+        st.markdown("---")
+        
+        # Download buttons
+        st.subheader("📥 Download Results")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.download_button(
+                label="📄 Download Summary (JSON)",
+                data=json.dumps(summary, indent=4),
+                file_name="model_summary.json",
+                mime="application/json"
+            )
+        
+        with col2:
+            comparison_df = load_csv("geo_clustering_comparison.csv")
+            if comparison_df is not None:
+                st.download_button(
+                    label="📊 Download Comparison (CSV)",
+                    data=comparison_df.to_csv(index=False),
+                    file_name="clustering_comparison.csv",
+                    mime="text/csv"
+                )
+    
+    else:
+        st.error("Model summary not found. Please run the analysis first.")
+
+# ==============================
+# Page 7: MLflow Tracking
+# ==============================
+elif page == "🧪 MLflow Tracking":
+    
+    st.title("🧪 MLflow Experiment Tracking")
+    
+    st.info("All experiments are tracked using MLflow for reproducibility and version control.")
+    
+    # DagsHub link
+    st.subheader("🌐 DagsHub Repository")
+    
+    st.markdown("""
+    **Repository Details:**
+    - Owner: `malaychand`
+    - Repo: `Patrol_IQ-_Smart_Safety_Analytics`
+    - Platform: DagsHub
+    """)
+    
+    st.markdown("""
+    ### 📊 View MLflow Dashboard:
+    [🔗 Open MLflow Tracking UI](https://dagshub.com/malaychand/Patrol_IQ-_Smart_Safety_Analytics.mlflow)
+    """)
+    
+    st.markdown("---")
+    
+    # What's tracked
+    st.subheader("📝 Tracked Information")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Parameters Logged**")
+        st.markdown("- Algorithm type")
+        st.markdown("- Number of clusters (K)")
+        st.markdown("- Distance metrics")
+        st.markdown("- Sample sizes")
+        st.markdown("- Random seeds")
+    
+    with col2:
+        st.markdown("**Metrics Logged**")
+        st.markdown("- Silhouette scores")
+        st.markdown("- Davies-Bouldin index")
+        st.markdown("- Calinski-Harabasz score")
+        st.markdown("- Variance explained")
+        st.markdown("- Training time")
+    
+    st.markdown("---")
+    
+    # Local MLflow
+    st.subheader("💻 Local MLflow Setup")
+    
+    st.code("mlflow ui", language="bash")
+    
+    st.info("Run the above command to start local MLflow UI at http://localhost:5000")
+    
+    # Summary stats
+    st.markdown("---")
+    st.subheader("📊 Experiment Statistics")
+    
+    summary = load_json("model_summary.json")
+    
+    if summary:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        col1.metric("Total Experiments", "6+")
+        col2.metric("Geographic Models", "3")
+        col3.metric("Temporal Models", "1")
+        col4.metric("DR Techniques", "2")
+
+# ==============================
+# Footer
+# ==============================
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; color: #666;">
+    <p><b>PatrolIQ - Smart Safety Analytics Platform</b></p>
+    <p>Built with Streamlit | Powered by Machine Learning & MLflow</p>
+</div>
+""", unsafe_allow_html=True)

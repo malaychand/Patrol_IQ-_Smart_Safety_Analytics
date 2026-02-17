@@ -1,125 +1,206 @@
-# **PatrolIQ – Smart Safety Analytics Platform**
+# 🚓 PatrolIQ – Smart Safety Analytics Platform
 
-PatrolIQ is an end-to-end **urban safety intelligence platform** that uses unsupervised machine learning to analyze 500,000+ crime records from the Chicago Police Department. The platform identifies **crime hotspots**, analyzes **temporal crime patterns**, performs **dimensionality reduction**, and provides actionable insights for **police patrol optimization** and **public safety planning**.
+PatrolIQ is an end-to-end **urban safety intelligence platform** that uses unsupervised machine learning to analyze **500,000+ crime records** from the Chicago Police Department.
 
-Built with **Python, Streamlit, MLflow, and modern data science workflows**, PatrolIQ brings data-driven crime analysis to life.
+The platform identifies **crime hotspots**, analyzes **temporal crime patterns**, performs **dimensionality reduction**, and provides actionable insights for **police patrol optimization** and **public safety planning**.
 
----
-
-## 🚀 **Key Features**
-- **Crime Hotspot Detection** using K-Means, DBSCAN, and Hierarchical Clustering  
-- **Temporal Crime Pattern Analysis** (hour/day/month trends)  
-- **Dimensionality Reduction** using PCA and t-SNE/UMAP  
-- **500,000 Chicago Crime Records** processed for real-time analysis  
-- **Geospatial Visualization** with interactive maps  
-- **MLflow Tracking & Model Registry** for experiment management  
-- **Streamlit Web App** deployed on Streamlit Cloud  
-- **Advanced Feature Engineering** from 22+ crime and location variables  
-- **Business Insights** for Police, City Administration, and Emergency Response Teams  
+Built using **Python, Streamlit, and modern data science workflows**, PatrolIQ demonstrates how machine learning can support safer cities through data-driven decision-making.
 
 ---
 
-## 🎯 **Objective**
-Build an intelligent urban safety analytics tool that empowers law enforcement agencies to make **data-driven decisions** by identifying crime hotspots, optimizing patrol routes, and revealing hidden crime patterns across Chicago.
+## 🔗 Project Links
+
+- **DagsHub Repository:**  
+  https://dagshub.com/malaychand/Patrol_IQ-_Smart_Safety_Analytics
+
+- **MLflow Experiment Dashboard:**  
+  https://dagshub.com/malaychand/Patrol_IQ-_Smart_Safety_Analytics.mlflow/#/experiments
 
 ---
 
-## 📂 **Dataset**
-- Source: *Chicago Police Department Crime Dataset*  
-- Full dataset: **7.8 million records (~1.7GB)**  
-- Project sample: **500,000 most recent records**  
-- Key Fields:
-  - Crime type  
-  - Location description  
-  - Latitude/Longitude  
-  - Arrest & domestic violence flag  
-  - Date/Time  
-  - District, Ward, Community Area  
+## 🚀 Key Features
+
+- Crime Hotspot Detection using:
+  - K-Means
+  - DBSCAN
+  - Hierarchical Clustering
+- Temporal Crime Pattern Analysis
+- Dimensionality Reduction using PCA and t-SNE
+- Analysis of **500,000 real-world crime records**
+- Interactive visualizations
+- Streamlit-based web application
+- Advanced feature engineering from 22+ variables
+- Data-driven insights for public safety
 
 ---
 
-## 🛠️ **Tech Stack**
+## 🎯 Project Objective
+
+To build an intelligent crime analytics platform that enables law enforcement and city administrators to:
+
+- Identify high-risk areas
+- Optimize patrol routes
+- Understand crime patterns over time
+- Allocate resources efficiently
+
+---
+
+## 📂 Dataset
+
+**Source:** Chicago Police Department Crime Dataset  
+- Full dataset: **7.8 million records (~1.7 GB)**
+- Project sample: **500,000 most recent records**
+
+### Key Fields
+- Primary crime type
+- Location description
+- Latitude & Longitude
+- Arrest flag
+- Domestic violence flag
+- Date & time
+- District, ward, community area
+
+---
+
+## 🛠️ Tech Stack
+
 | Component | Technology |
 |----------|------------|
 | Programming | Python |
-| Libraries | Pandas, NumPy, Scikit-learn, Matplotlib, Seaborn, UMAP-learn |
-| Unsupervised ML | K-Means, DBSCAN, Hierarchical Clustering |
-| Dimensionality Reduction | PCA, t-SNE, UMAP |
+| Data Processing | Pandas, NumPy |
+| Machine Learning | Scikit-learn |
+| Clustering | K-Means, DBSCAN, Hierarchical |
+| Dimensionality Reduction | PCA, t-SNE |
+| Visualization | Matplotlib, Plotly |
+| Web App | Streamlit |
 | Experiment Tracking | MLflow |
-| Deployment | Streamlit Cloud |
-| Visualization | Folium, Plotly, Altair |
-| Geospatial Tools | Shapely, Geopy |
+| Model Hosting | DagsHub |
 
 ---
 
-## 📊 **Project Workflow**
+## 📊 Project Workflow
 
-### **1. Data Preprocessing**
-- Handle missing or inconsistent values  
-- Normalize geographical coordinates  
-- Extract time features (hour, day, month, season)  
-- Encode categorical features  
-- Validate data quality  
+### 1. Data Preprocessing
+- Handle missing values
+- Normalize geographic coordinates
+- Extract time-based features
+- Encode categorical variables
 
-### **2. Exploratory Data Analysis**
-- Crime frequency distribution  
-- Hotspot visualization using heatmaps  
-- Trend analysis by hour/day/month  
-- Arrest and domestic violence correlations  
+### 2. Exploratory Data Analysis
+- Crime distribution by type
+- Geographic hotspot maps
+- Temporal trend analysis
+- Arrest and domestic crime correlations
 
-### **3. Feature Engineering**
-- Temporal features (weekend flag, seasons, hour bins)  
-- Crime severity scoring  
-- Geo-binning and coordinate clustering  
-- District categorization  
-
-### **4. Unsupervised Learning**
-
-#### 🟦 **Geographic Clustering**
-- K-Means (5–10 clusters)  
-- DBSCAN for density-based hotspots  
-- Hierarchical clustering with dendrogram  
-- Evaluation metrics: *Silhouette Score, Davies-Bouldin Index*  
-
-#### 🕒 **Temporal Clustering**
-- K-Means using hour/day/month  
-- Identifies 3–5 temporal crime profiles  
-- Late-night crimes, peak hours, seasonal spikes  
+### 3. Feature Engineering
+- Hour, day, month, season features
+- Crime severity scoring
+- Geographic binning
+- Encoded categorical variables
 
 ---
 
-## 🌀 **Dimensionality Reduction**
-- **PCA**: Reduce 22+ features → 2–3 components  
-  - Target: **70%+ variance explanation**  
-- **t-SNE/UMAP** for 2D visualization of crime clusters  
-- Identify underlying patterns in high-dimensional space  
+## 🤖 Unsupervised Learning
+
+### Geographic Clustering
+Three clustering algorithms were applied:
+
+**K-Means**
+- Tested clusters from 2 to 8
+- Selected best K using silhouette score
+
+**DBSCAN**
+- Tested multiple eps values
+- Identified dense crime zones
+- Detected noise/outliers
+
+**Hierarchical Clustering**
+- Tested cluster sizes from 3 to 8
+- Generated dendrogram for zone hierarchy
+
+**Evaluation Metrics**
+- Silhouette Score
+- Davies–Bouldin Index
+- Calinski–Harabasz Score
 
 ---
 
-## 📁 **MLflow Tracking**
-Tracks:
-- Clustering parameters  
-- PCA variance  
-- Silhouette & Davies-Bouldin scores  
-- Best-performing models  
-- Model Registry for deployment  
+### Temporal Pattern Clustering
+- K-Means on:
+  - Hour
+  - Day of week
+  - Month
+  - Season
+- Identified distinct crime-time profiles
 
 ---
 
-## 🏙️ **Business Use Cases**
+## 🌀 Dimensionality Reduction
 
-### **Police Departments**
-- 60%+ faster response time  
-- Optimized patrol assignments  
-- High-risk area identification  
+### PCA (Principal Component Analysis)
+- Reduced high-dimensional features
+- Extracted main crime-driving factors
+- Visualized in 2D and 3D
 
-### **City Administration**
-- Better urban safety planning  
-- Data-backed CCTV & lighting placement  
-- Budget justification  
+### t-SNE
+- Generated 2D visual cluster maps
+- Revealed hidden patterns in crime data
 
-### **Emergency Response Teams**
-- Resource optimization  
-- Risk-aware dispatching  
-- Multi-agency coordination  
+---
 
+## 📈 Key Results
+
+### Geographic Clustering
+- Multiple crime hotspots identified
+- DBSCAN achieved best silhouette score
+
+### Temporal Clustering
+- Distinct patterns:
+  - Late-night crimes
+  - Midday incidents
+  - Weekend spikes
+
+### PCA Insights
+Top contributing features:
+- Location coordinates
+- Time of day
+- Month/season
+
+---
+
+## 🏙️ Business Use Cases
+
+### Police Departments
+- Optimize patrol routes
+- Reduce response times
+- Identify high-risk zones
+
+### City Administration
+- Data-driven safety planning
+- Strategic CCTV placement
+- Budget justification
+
+### Emergency Response
+- Priority-based dispatching
+- Resource optimization
+- Multi-agency coordination
+
+---
+
+## 🖥️ Streamlit Application
+
+The project includes a **multi-page Streamlit web app** featuring:
+
+- Crime hotspot visualization
+- Temporal pattern dashboards
+- PCA and t-SNE visualizations
+- Model performance comparisons
+
+---
+
+## ⚙️ How to Run the Project
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/yourusername/patroliq.git
+cd patroliq
